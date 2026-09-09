@@ -110,7 +110,7 @@ def translate_to_en(text: str) -> str:
     try:
         result = GoogleTranslator(source="auto", target="en").translate(text)
         if _is_bad_translation(result, text):
-            log.warning(f"⚠️ Hasil translate mencurigakan, pakai judul asli. Raw: {str(result)[:80]}")
+            log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
             return text
         return result
     except Exception as e:
@@ -123,7 +123,7 @@ def translate_to_zh(text: str) -> str:
     try:
         result = GoogleTranslator(source="auto", target="zh-CN").translate(text)
         if _is_bad_translation(result, text):
-            log.warning(f"⚠️ Hasil translate ZH mencurigakan, pakai judul asli. Raw: {str(result)[:80]}")
+            log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
             return text
         return result
     except Exception as e:
