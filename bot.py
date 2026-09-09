@@ -294,6 +294,10 @@ def set_baseline_done():
 def is_relevant(text):
     return any(kw in text.lower() for kw in KEYWORDS)
 
+def normalize_uid(href: str) -> str:
+    m = re.match(r'^(.*)-\d{8,}$', href.rstrip('/'))
+    return m.group(1) if m else href
+
 # ─── TELEGRAM SENDER ───────────────────────────────────────────────────────────
 def send_telegram(message):
     if not is_baseline_done():
@@ -526,7 +530,7 @@ def fetch_scrape(source):
                 href = base + href
             elif not href.startswith("http"):
                 continue
-            uid = href
+            uid = normalize_uid(href)
             if uid in seen_uids or is_seen(uid):
                 continue
             seen_uids.add(uid)
