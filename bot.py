@@ -117,6 +117,20 @@ def translate_to_en(text: str) -> str:
         log.error(f"⚠️ Gagal translate Upbit title: {e}")
         return text
 
+def translate_to_zh(text: str) -> str:
+    if not text:
+        return text
+    try:
+        result = GoogleTranslator(source="auto", target="zh-CN").translate(text)
+        if _is_bad_translation(result, text):
+            log.warning(f"⚠️ Hasil translate ZH mencurigakan, pakai judul asli. Raw: {str(result)[:80]}")
+            return text
+        return result
+    except Exception as e:
+        log.error(f"⚠️ Gagal translate ke ZH: {e}")
+        return text
+
+
 # ─── CEX SOURCES ───────────────────────────────────────────────────────────────
 SOURCES = [
     # ── Binance ──
@@ -299,7 +313,15 @@ def send_telegram(message):
         log.error(f"❌ Gagal kirim ke Telegram: {e}")
 
 def format_message(logo, cex, title, link):
-    return f"{logo} <b>[{cex}]</b>\n{title}\n🔗 <a href='{link}'>Announcement</a>"
+    title_cn = translate_to_zh(title)
+    return (
+        f"{logo} <b>[{cex}]</b>\n"
+        f"{title}\n"
+        f"\n"
+        f"[{cex}]\n"
+        f"{title_cn}\n"
+        f"🔗 <a href='{link}'>Announcement</a>"
+    )
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
