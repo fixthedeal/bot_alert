@@ -9,7 +9,7 @@ import feedparser
 from datetime import datetime, timezone
 from apscheduler.schedulers.blocking import BlockingScheduler
 from bs4 import BeautifulSoup
-from deep_translator import GoogleTranslator
+from deep_translator import GoogleTranslator, DeeplTranslator
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 BOT_TOKEN   = os.environ.get("BOT_TOKEN")
@@ -23,7 +23,7 @@ if not BOT_TOKEN or not CHANNEL_ID:
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
-GATE_BUILD_ID = "CrPrnriKHKZviPX-CdQ7d"
+GATE_BUILD_ID = "Fn6h1ESDRJ7ImYZYPgoXC"
 
 HEADERS_GATE = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
@@ -103,32 +103,53 @@ def _is_bad_translation(result: str, original: str) -> bool:
         return True
     low = result.lower()
     return any(marker in low for marker in BAD_TRANSLATION_MARKERS)
-
+ 
+def _deepl_translate(text: str, target: str) -> str | None:
+    """target: 'EN-US' atau 'ZH' (kode DeepL, beda dengan Google)"""
+    if not DEEPL_API_KEY:
+        return None
+    try:
+        # use_free_api=True kalau API key kamu berakhiran ':fx'
+        result = DeeplTranslator(
+            api_key=DEEPL_API_KEY,
+            source="auto",
+            target=target,
+            use_free_api=DEEPL_API_KEY.endswith(":fx"),
+        ).translate(text)
+        if _is_bad_translation(result, text):
+            return None
+        return result
+    except Exception as e:
+        log.warning(f"⚠️ DeepL gagal ({target}): {e}")
+        return None
+ 
+def _google_translate(text: str, target: str) -> str | None:
+    try:
+        result = GoogleTranslator(source="auto", target=target).translate(text)
+        if _is_bad_translation(result, text):
+            return None
+        return result
+    except Exception as e:
+        log.error(f"⚠️ Google Translate juga gagal ({target}): {e}")
+        return None
+ 
 def translate_to_en(text: str) -> str:
     if not text:
         return text
-    try:
-        result = GoogleTranslator(source="auto", target="en").translate(text)
-        if _is_bad_translation(result, text):
-            log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
-            return text
-        return result
-    except Exception as e:
-        log.error(f"⚠️ Gagal translate Upbit title: {e}")
+    result = _deepl_translate(text, "EN-US") or _google_translate(text, "en")
+    if not result:
+        log.warning("⚠️ Semua translator gagal, pakai judul asli.")
         return text
-
+    return result
+ 
 def translate_to_zh(text: str) -> str:
     if not text:
         return text
-    try:
-        result = GoogleTranslator(source="auto", target="zh-CN").translate(text)
-        if _is_bad_translation(result, text):
-            log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
-            return text
-        return result
-    except Exception as e:
-        log.error(f"⚠️ Gagal translate ke ZH: {e}")
+    result = _deepl_translate(text, "ZH") or _google_translate(text, "zh-CN")
+    if not result:
+        log.warning("⚠️ Semua translator gagal, pakai judul asli.")
         return text
+    return result
 
 
 # ─── CEX SOURCES ───────────────────────────────────────────────────────────────
@@ -401,7 +422,7 @@ def fetch_gate_scrape(source):
         log.info(f"   → status: {r.status_code} | len: {len(r.text)}")
 
         if r.status_code == 404:
-            log.error("❌ Gate.io: 404 — GATE_BUILD_ID sudah basi, perlu diupdate manual")
+            log.error("❌ Gate.io: 404 — GATE_BUILD_ID expired, perlu diupdate manual")
             return
 
         if r.status_code != 200:
