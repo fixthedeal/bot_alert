@@ -367,6 +367,7 @@ def fetch_binance_api(source):
             msg = format_message(source["logo"], source["name"], title, link)
             if send_telegram(msg):
                 mark_seen(uid)
+                matched += 1
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
@@ -393,6 +394,7 @@ def fetch_rss(source: dict):
             msg = format_message(source["logo"], source["name"], title, link)
             if send_telegram(msg):
                 mark_seen(uid)
+                matched += 1
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
@@ -435,6 +437,7 @@ def fetch_gate_scrape(source):
             msg = format_message(source["logo"], source["name"], title, link)
             if send_telegram(msg):
                 mark_seen(uid)
+                matched += 1
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
@@ -465,6 +468,7 @@ def fetch_bitfinex_api(source):
             msg = format_message(source["logo"], source["name"], title, link)
             if send_telegram(msg):
                 mark_seen(uid)
+                matched += 1
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
@@ -489,6 +493,7 @@ def fetch_cryptocom_api(source):
             msg = format_message(source["logo"], source["name"], title, link)
             if send_telegram(msg):
                 mark_seen(uid)
+                matched += 1
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
@@ -516,6 +521,7 @@ def fetch_kucoin_api(source):
             msg = format_message(source["logo"], source["name"], title, url)
             if send_telegram(msg):
                 mark_seen(uid_key)
+                matched += 1
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
@@ -604,6 +610,7 @@ def fetch_upbit_api(source):
             msg = format_message(source["logo"], source["name"], title_en, link)
             if send_telegram(msg):
                 mark_seen(uid)
+                matched += 1
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
@@ -651,6 +658,7 @@ def fetch_bitget_scrape(source):
             msg = format_message(source["logo"], source["name"], title, href)
             if send_telegram(msg):
                 mark_seen(uid)
+                matched += 1
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
