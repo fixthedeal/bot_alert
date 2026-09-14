@@ -9,7 +9,6 @@ import feedparser
 from datetime import datetime, timezone
 from apscheduler.schedulers.blocking import BlockingScheduler
 from bs4 import BeautifulSoup
-from deep_translator import DeeplTranslator
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 BOT_TOKEN   = os.environ.get("BOT_TOKEN")
@@ -21,13 +20,18 @@ if not BOT_TOKEN or not CHANNEL_ID:
     raise ValueError("BOT_TOKEN dan CHANNEL_ID harus diisi di Railway Variables!")
 
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY")
-DEEPL_IS_FREE = DEEPL_API_KEY.endswith(":fx") if DEEPL_API_KEY else True
 
-if not DEEPL_API_KEY:
-    raise ValueError("DEEPL_API_KEY harus diisi di Railway Variables!")
+DEEPL_API_URL = (
+    "https://api-free.deepl.com/v2/translate"
+    if DEEPL_API_KEY and DEEPL_API_KEY.endswith(":fx")
+    else "https://api.deepl.com/v2/translate"
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
+
+if not DEEPL_API_KEY:
+    log.warning("⚠️ DEEPL_API_KEY tidak diisi — translasi akan dilewati (pakai teks asli).")
 
 GATE_BUILD_ID = "Fn6h1ESDRJ7ImYZYPgoXC"
 
@@ -110,41 +114,35 @@ def _is_bad_translation(result: str, original: str) -> bool:
     low = result.lower()
     return any(marker in low for marker in BAD_TRANSLATION_MARKERS)
 
-def translate_to_en(text: str) -> str:
-    if not text:
+def _deepl_translate(text: str, target_lang: str) -> str:
+    if not text or not DEEPL_API_KEY:
         return text
     try:
-        result = DeeplTranslator(
-            api_key=DEEPL_API_KEY,
-            source="auto",
-            target="en-us",
-            use_free_api=DEEPL_IS_FREE,
-        ).translate(text)
+        r = requests.post(
+            DEEPL_API_URL,
+            headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"},
+            data={"text": text, "target_lang": target_lang},
+            timeout=(5, 15),
+        )
+        r.raise_for_status()
+        translations = r.json().get("translations", [])
+        if not translations:
+            log.warning("⚠️ Respons DeepL tanpa hasil translasi, pakai teks asli.")
+            return text
+        result = translations[0].get("text", text)
         if _is_bad_translation(result, text):
             log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
             return text
         return result
     except Exception as e:
-        log.error(f"⚠️ Gagal translate Upbit title (DeepL): {e}")
+        log.error(f"⚠️ Gagal translate ke {target_lang} (DeepL): {e}")
         return text
 
+def translate_to_en(text: str) -> str:
+    return _deepl_translate(text, "EN-US")
+
 def translate_to_zh(text: str) -> str:
-    if not text:
-        return text
-    try:
-        result = DeeplTranslator(
-            api_key=DEEPL_API_KEY,
-            source="auto",
-            target="zh",
-            use_free_api=DEEPL_IS_FREE,
-        ).translate(text)
-        if _is_bad_translation(result, text):
-            log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
-            return text
-        return result
-    except Exception as e:
-        log.error(f"⚠️ Gagal translate ke ZH (DeepL): {e}")
-        return text
+    return _deepl_translate(text, "ZH")
 
 
 # ─── CEX SOURCES ───────────────────────────────────────────────────────────────
