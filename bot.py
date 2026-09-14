@@ -301,7 +301,7 @@ def normalize_uid(href: str) -> str:
 # ─── TELEGRAM SENDER ───────────────────────────────────────────────────────────
 def send_telegram(message):
     if not is_baseline_done():
-        return
+        return True
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
@@ -313,8 +313,10 @@ def send_telegram(message):
         r = requests.post(url, json=payload, timeout=10)
         r.raise_for_status()
         log.info("✅ Pesan terkirim ke channel")
+        return True
     except Exception as e:
         log.error(f"❌ Gagal kirim ke Telegram: {e}")
+        return False
 
 def format_message(logo, cex, title, link):
     title_cn = translate_to_zh(title)
@@ -361,10 +363,12 @@ def fetch_binance_api(source):
             uid = f"binance_{code}"
             if is_seen(uid):
                 continue
-            mark_seen(uid)
             link = f"{source['base_link']}{code}"
-            send_telegram(format_message(source["logo"], source["name"], title, link))
+            msg = format_message(source["logo"], source["name"], title, link)
+            if send_telegram(msg):
+                mark_seen(uid)
             time.sleep(1)
+        log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
         log.error(f"❌ Error API Binance: {e}")
 
@@ -386,9 +390,11 @@ def fetch_rss(source: dict):
                 continue
             if is_seen(uid):
                 continue
-            mark_seen(uid)
-            send_telegram(format_message(source["logo"], source["name"], title, link))
+            msg = format_message(source["logo"], source["name"], title, link)
+            if send_telegram(msg):
+                mark_seen(uid)
             time.sleep(1)
+        log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
         log.error(f"❌ Error RSS {source['name']}: {e}")
 
@@ -425,10 +431,12 @@ def fetch_gate_scrape(source):
             uid = f"gate_{aid}"
             if is_seen(uid):
                 continue
-            mark_seen(uid)
             link = f"https://www.gate.com{url_path}" if url_path else f"https://www.gate.com/announcements/article/{aid}"
-            send_telegram(format_message(source["logo"], source["name"], title, link))
+            msg = format_message(source["logo"], source["name"], title, link)
+            if send_telegram(msg):
+                mark_seen(uid)
             time.sleep(1)
+        log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
         log.error(f"❌ Error scrape Gate.io: {e}")
 
@@ -453,10 +461,12 @@ def fetch_bitfinex_api(source):
             uid = f"bitfinex_{post_id}"
             if is_seen(uid):
                 continue
-            mark_seen(uid)
             link = f"{source['base_link']}{post_id}"
-            send_telegram(format_message(source["logo"], source["name"], title, link))
+            msg = format_message(source["logo"], source["name"], title, link)
+            if send_telegram(msg):
+                mark_seen(uid)
             time.sleep(1)
+        log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
         log.error(f"❌ Error API Bitfinex: {e}")
 
@@ -475,10 +485,12 @@ def fetch_cryptocom_api(source):
             uid = f"cryptocom_{aid}"
             if is_seen(uid):
                 continue
-            mark_seen(uid)
             link = source["base_link"]
-            send_telegram(format_message(source["logo"], source["name"], title, link))
+            msg = format_message(source["logo"], source["name"], title, link)
+            if send_telegram(msg):
+                mark_seen(uid)
             time.sleep(1)
+        log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
         log.error(f"❌ Error API Crypto.com: {e}")
 
@@ -501,9 +513,11 @@ def fetch_kucoin_api(source):
             uid_key = f"kucoin_{uid}"
             if is_seen(uid_key):
                 continue
-            mark_seen(uid_key)
-            send_telegram(format_message(source["logo"], source["name"], title, url))
+            msg = format_message(source["logo"], source["name"], title, url)
+            if send_telegram(msg):
+                mark_seen(uid_key)
             time.sleep(1)
+        log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
         log.error(f"❌ Error API KuCoin: {e}")
 
@@ -534,9 +548,10 @@ def fetch_scrape(source):
             if uid in seen_uids or is_seen(uid):
                 continue
             seen_uids.add(uid)
-            matched += 1
-            mark_seen(uid)
-            send_telegram(format_message(source["logo"], source["name"], title, href))
+            msg = format_message(source["logo"], source["name"], title, href)
+            if send_telegram(msg):
+                matched += 1
+                mark_seen(uid)
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
@@ -584,12 +599,13 @@ def fetch_upbit_api(source):
             uid = f"upbit_{nid}"
             if is_seen(uid):
                 continue
-            mark_seen(uid)
-
             title_en = translate_to_en(title)
             link = f"{source['base_link']}{nid}"
-            send_telegram(format_message(source["logo"], source["name"], title_en, link))
+            msg = format_message(source["logo"], source["name"], title_en, link)
+            if send_telegram(msg):
+                mark_seen(uid)
             time.sleep(1)
+        log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
         log.error(f"❌ Error API Upbit: {e}")
 
@@ -631,11 +647,12 @@ def fetch_bitget_scrape(source):
             uid = f"bitget_{href.rstrip('/').split('/')[-1]}"
             if uid in seen_uids or is_seen(uid):
                 continue
-
             seen_uids.add(uid)
-            mark_seen(uid)
-            send_telegram(format_message(source["logo"], source["name"], title, href))
+            msg = format_message(source["logo"], source["name"], title, href)
+            if send_telegram(msg):
+                mark_seen(uid)
             time.sleep(1)
+        log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
         log.error(f"❌ Error scrape Bitget: {e}")
 
