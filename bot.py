@@ -137,7 +137,7 @@ def _google_translate(text: str, target: str) -> str | None:
 def translate_to_en(text: str) -> str:
     if not text:
         return text
-    result = _deepl_translate(text, "EN-US") or _google_translate(text, "en")
+    result = _deepl_translate(text, "en") or _google_translate(text, "en")
     if not result:
         log.warning("⚠️ Semua translator gagal, pakai judul asli.")
         return text
@@ -146,7 +146,7 @@ def translate_to_en(text: str) -> str:
 def translate_to_zh(text: str) -> str:
     if not text:
         return text
-    result = _deepl_translate(text, "ZH") or _google_translate(text, "zh-CN")
+    result = _deepl_translate(text, "zh") or _google_translate(text, "zh-CN")
     if not result:
         log.warning("⚠️ Semua translator gagal, pakai judul asli.")
         return text
