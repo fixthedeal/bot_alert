@@ -13,13 +13,12 @@ from bs4 import BeautifulSoup
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 BOT_TOKEN   = os.environ.get("BOT_TOKEN")
 CHANNEL_ID  = os.environ.get("CHANNEL_ID")
+DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY")
 CHECK_EVERY = 2
 DB_PATH     = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".") + "/seen.db"
 
 if not BOT_TOKEN or not CHANNEL_ID:
     raise ValueError("BOT_TOKEN dan CHANNEL_ID harus diisi di Railway Variables!")
-
-DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY")
 
 DEEPL_API_URL = (
     "https://api-free.deepl.com/v2/translate"
