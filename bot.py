@@ -9,12 +9,11 @@ import feedparser
 from datetime import datetime, timezone
 from apscheduler.schedulers.blocking import BlockingScheduler
 from bs4 import BeautifulSoup
-from deep_translator import GoogleTranslator, DeeplTranslator
+from deep_translator import GoogleTranslator
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 BOT_TOKEN   = os.environ.get("BOT_TOKEN")
 CHANNEL_ID  = os.environ.get("CHANNEL_ID")
-DEEPL_API_KEY  = os.environ.get("DEEPL_API_KEY")
 CHECK_EVERY = 2
 DB_PATH     = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".") + "/seen.db"
 
@@ -69,16 +68,16 @@ UPBIT_KEYWORDS = [
     "investment warning",
     "delisting",
     "trading support termination",
- 
+
     # Korean — delisting
     "거래지원 종료",
     "상장폐지",
- 
+
     # Korean — caution/early-warning stage
     "유의 종목",
     "유의종목",
     "투자유의",
- 
+
     # Korean — deposit/withdrawal suspension
     "입출금 중단",
     "입출금 일시 중단",
@@ -87,8 +86,8 @@ UPBIT_KEYWORDS = [
 def is_relevant_upbit(text: str) -> bool:
     text_lower = text.lower()
     return any(kw.lower() in text_lower for kw in UPBIT_KEYWORDS)
- 
- 
+
+
 # ─── TRANSLATION HELPER ────────────────────────────────────────────────────────
 BAD_TRANSLATION_MARKERS = [
     "that's an error", "that’s an error",
@@ -104,53 +103,32 @@ def _is_bad_translation(result: str, original: str) -> bool:
         return True
     low = result.lower()
     return any(marker in low for marker in BAD_TRANSLATION_MARKERS)
- 
-def _deepl_translate(text: str, target: str) -> str | None:
-    """target: 'EN-US' atau 'ZH' (kode DeepL, beda dengan Google)"""
-    if not DEEPL_API_KEY:
-        return None
-    try:
-        # use_free_api=True kalau API key kamu berakhiran ':fx'
-        result = DeeplTranslator(
-            api_key=DEEPL_API_KEY,
-            source="auto",
-            target=target,
-            use_free_api=DEEPL_API_KEY.endswith(":fx"),
-        ).translate(text)
-        if _is_bad_translation(result, text):
-            return None
-        return result
-    except Exception as e:
-        log.warning(f"⚠️ DeepL gagal ({target}): {e}")
-        return None
- 
-def _google_translate(text: str, target: str) -> str | None:
-    try:
-        result = GoogleTranslator(source="auto", target=target).translate(text)
-        if _is_bad_translation(result, text):
-            return None
-        return result
-    except Exception as e:
-        log.error(f"⚠️ Google Translate juga gagal ({target}): {e}")
-        return None
- 
+
 def translate_to_en(text: str) -> str:
     if not text:
         return text
-    result = _deepl_translate(text, "en") or _google_translate(text, "en")
-    if not result:
-        log.warning("⚠️ Semua translator gagal, pakai judul asli.")
+    try:
+        result = GoogleTranslator(source="auto", target="en").translate(text)
+        if _is_bad_translation(result, text):
+            log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
+            return text
+        return result
+    except Exception as e:
+        log.error(f"⚠️ Gagal translate Upbit title: {e}")
         return text
-    return result
- 
+
 def translate_to_zh(text: str) -> str:
     if not text:
         return text
-    result = _deepl_translate(text, "zh") or _google_translate(text, "zh-CN")
-    if not result:
-        log.warning("⚠️ Semua translator gagal, pakai judul asli.")
+    try:
+        result = GoogleTranslator(source="auto", target="zh-CN").translate(text)
+        if _is_bad_translation(result, text):
+            log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
+            return text
+        return result
+    except Exception as e:
+        log.error(f"⚠️ Gagal translate ke ZH: {e}")
         return text
-    return result
 
 
 # ─── CEX SOURCES ───────────────────────────────────────────────────────────────
@@ -323,7 +301,7 @@ def normalize_uid(href: str) -> str:
 # ─── TELEGRAM SENDER ───────────────────────────────────────────────────────────
 def send_telegram(message):
     if not is_baseline_done():
-        return True  # mode baseline: sengaja tidak kirim, tapi tetap dianggap "berhasil" biar tetap di-mark-seen
+        return
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
@@ -335,10 +313,8 @@ def send_telegram(message):
         r = requests.post(url, json=payload, timeout=10)
         r.raise_for_status()
         log.info("✅ Pesan terkirim ke channel")
-        return True
     except Exception as e:
         log.error(f"❌ Gagal kirim ke Telegram: {e}")
-        return False
 
 def format_message(logo, cex, title, link):
     title_cn = translate_to_zh(title)
@@ -385,10 +361,9 @@ def fetch_binance_api(source):
             uid = f"binance_{code}"
             if is_seen(uid):
                 continue
+            mark_seen(uid)
             link = f"{source['base_link']}{code}"
-            msg = format_message(source["logo"], source["name"], title, link)
-            if send_telegram(msg):
-                mark_seen(uid)
+            send_telegram(format_message(source["logo"], source["name"], title, link))
             time.sleep(1)
     except Exception as e:
         log.error(f"❌ Error API Binance: {e}")
@@ -411,9 +386,8 @@ def fetch_rss(source: dict):
                 continue
             if is_seen(uid):
                 continue
-            msg = format_message(source["logo"], source["name"], title, link)
-            if send_telegram(msg):
-                mark_seen(uid)
+            mark_seen(uid)
+            send_telegram(format_message(source["logo"], source["name"], title, link))
             time.sleep(1)
     except Exception as e:
         log.error(f"❌ Error RSS {source['name']}: {e}")
@@ -427,7 +401,7 @@ def fetch_gate_scrape(source):
         log.info(f"   → status: {r.status_code} | len: {len(r.text)}")
 
         if r.status_code == 404:
-            log.error("❌ Gate.io: 404 — GATE_BUILD_ID expired, perlu diupdate manual")
+            log.error("❌ Gate.io: 404 — GATE_BUILD_ID sudah basi, perlu diupdate manual")
             return
 
         if r.status_code != 200:
@@ -451,10 +425,9 @@ def fetch_gate_scrape(source):
             uid = f"gate_{aid}"
             if is_seen(uid):
                 continue
+            mark_seen(uid)
             link = f"https://www.gate.com{url_path}" if url_path else f"https://www.gate.com/announcements/article/{aid}"
-            msg = format_message(source["logo"], source["name"], title, link)
-            if send_telegram(msg):
-                mark_seen(uid)
+            send_telegram(format_message(source["logo"], source["name"], title, link))
             time.sleep(1)
     except Exception as e:
         log.error(f"❌ Error scrape Gate.io: {e}")
@@ -480,10 +453,9 @@ def fetch_bitfinex_api(source):
             uid = f"bitfinex_{post_id}"
             if is_seen(uid):
                 continue
+            mark_seen(uid)
             link = f"{source['base_link']}{post_id}"
-            msg = format_message(source["logo"], source["name"], title, link)
-            if send_telegram(msg):
-                mark_seen(uid)
+            send_telegram(format_message(source["logo"], source["name"], title, link))
             time.sleep(1)
     except Exception as e:
         log.error(f"❌ Error API Bitfinex: {e}")
@@ -503,10 +475,9 @@ def fetch_cryptocom_api(source):
             uid = f"cryptocom_{aid}"
             if is_seen(uid):
                 continue
+            mark_seen(uid)
             link = source["base_link"]
-            msg = format_message(source["logo"], source["name"], title, link)
-            if send_telegram(msg):
-                mark_seen(uid)
+            send_telegram(format_message(source["logo"], source["name"], title, link))
             time.sleep(1)
     except Exception as e:
         log.error(f"❌ Error API Crypto.com: {e}")
@@ -530,9 +501,8 @@ def fetch_kucoin_api(source):
             uid_key = f"kucoin_{uid}"
             if is_seen(uid_key):
                 continue
-            msg = format_message(source["logo"], source["name"], title, url)
-            if send_telegram(msg):
-                mark_seen(uid_key)
+            mark_seen(uid_key)
+            send_telegram(format_message(source["logo"], source["name"], title, url))
             time.sleep(1)
     except Exception as e:
         log.error(f"❌ Error API KuCoin: {e}")
@@ -564,10 +534,9 @@ def fetch_scrape(source):
             if uid in seen_uids or is_seen(uid):
                 continue
             seen_uids.add(uid)
-            msg = format_message(source["logo"], source["name"], title, href)
-            if send_telegram(msg):
-                matched += 1
-                mark_seen(uid)
+            matched += 1
+            mark_seen(uid)
+            send_telegram(format_message(source["logo"], source["name"], title, href))
             time.sleep(1)
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
     except Exception as e:
@@ -591,16 +560,16 @@ def fetch_upbit_api(source):
         if not data.get("success"):
             log.error(f"❌ Upbit API success=false: {data}")
             return
- 
+
         notices = data.get("data", {}).get("notices", [])
         log.info(f"   → {len(notices)} artikel ditemukan")
- 
+
         for n in notices:
             title = n.get("title", "")
             nid   = n.get("id", "")
             if not nid:
                 continue
- 
+
             body_text = (
                 n.get("content")
                 or n.get("body")
@@ -608,24 +577,23 @@ def fetch_upbit_api(source):
                 or ""
             )
             combined_text = f"{title} {body_text}"
- 
+
             if not is_relevant_upbit(combined_text):
                 continue
- 
+
             uid = f"upbit_{nid}"
             if is_seen(uid):
                 continue
- 
+            mark_seen(uid)
+
             title_en = translate_to_en(title)
             link = f"{source['base_link']}{nid}"
-            msg = format_message(source["logo"], source["name"], title_en, link)
-            if send_telegram(msg):
-                mark_seen(uid)
+            send_telegram(format_message(source["logo"], source["name"], title_en, link))
             time.sleep(1)
     except Exception as e:
         log.error(f"❌ Error API Upbit: {e}")
 
- 
+
 def fetch_upbit_notice_body(notice_id: str) -> str:
     try:
         url = f"https://www.upbit.com/service_center/notice?id={notice_id}&view=share"
@@ -665,9 +633,8 @@ def fetch_bitget_scrape(source):
                 continue
 
             seen_uids.add(uid)
-            msg = format_message(source["logo"], source["name"], title, href)
-            if send_telegram(msg):
-                mark_seen(uid)
+            mark_seen(uid)
+            send_telegram(format_message(source["logo"], source["name"], title, href))
             time.sleep(1)
     except Exception as e:
         log.error(f"❌ Error scrape Bitget: {e}")
