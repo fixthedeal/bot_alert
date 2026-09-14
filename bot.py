@@ -9,7 +9,7 @@ import feedparser
 from datetime import datetime, timezone
 from apscheduler.schedulers.blocking import BlockingScheduler
 from bs4 import BeautifulSoup
-from deep_translator import GoogleTranslator
+from deep_translator import DeeplTranslator
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 BOT_TOKEN   = os.environ.get("BOT_TOKEN")
@@ -19,6 +19,12 @@ DB_PATH     = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".") + "/seen.db"
 
 if not BOT_TOKEN or not CHANNEL_ID:
     raise ValueError("BOT_TOKEN dan CHANNEL_ID harus diisi di Railway Variables!")
+
+DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY")
+DEEPL_IS_FREE = DEEPL_API_KEY.endswith(":fx") if DEEPL_API_KEY else True
+
+if not DEEPL_API_KEY:
+    raise ValueError("DEEPL_API_KEY harus diisi di Railway Variables!")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -108,26 +114,36 @@ def translate_to_en(text: str) -> str:
     if not text:
         return text
     try:
-        result = GoogleTranslator(source="auto", target="en").translate(text)
+        result = DeeplTranslator(
+            api_key=DEEPL_API_KEY,
+            source="auto",
+            target="en-us",
+            use_free_api=DEEPL_IS_FREE,
+        ).translate(text)
         if _is_bad_translation(result, text):
             log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
             return text
         return result
     except Exception as e:
-        log.error(f"⚠️ Gagal translate Upbit title: {e}")
+        log.error(f"⚠️ Gagal translate Upbit title (DeepL): {e}")
         return text
 
 def translate_to_zh(text: str) -> str:
     if not text:
         return text
     try:
-        result = GoogleTranslator(source="auto", target="zh-CN").translate(text)
+        result = DeeplTranslator(
+            api_key=DEEPL_API_KEY,
+            source="auto",
+            target="zh",
+            use_free_api=DEEPL_IS_FREE,
+        ).translate(text)
         if _is_bad_translation(result, text):
             log.warning(f"⚠️ Gagal translate, pakai judul asli. Raw: {str(result)[:80]}")
             return text
         return result
     except Exception as e:
-        log.error(f"⚠️ Gagal translate ke ZH: {e}")
+        log.error(f"⚠️ Gagal translate ke ZH (DeepL): {e}")
         return text
 
 
