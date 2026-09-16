@@ -210,7 +210,7 @@ SOURCES = [
     },
     # ── KuCoin ──
     {
-        "name": "Kucoin",
+        "name": "KuCoin",
         "type": "kucoin_api",
         "url": "https://api.kucoin.com/api/ua/v1/market/announcement?annType=latest-announcements&lang=en_US&page=1&pageSize=20",
         "logo": "🟢",
