@@ -59,8 +59,8 @@ KEYWORDS = [
     "rename", "rebranding", "tick size",
     # Network & Upgrade
     "network upgrade", "network support termination",
-    "mainnet upgrade", "mainnet launch",
-    "hard fork", "hardfork", "hard-fork",
+    "mainnet upgrade", "mainnet launch", "system upgrade",
+    "hard fork", "hardfork", "hard-fork", "upgrade",
     "chain upgrade", "protocol upgrade", "suspension",
     "software upgrade", "node upgrade", "suspending", "resuming", "suspend", "resume",
     # Deposit/withdrawal
