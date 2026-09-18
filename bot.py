@@ -88,7 +88,7 @@ KEYWORDS = [
     "token rebranding", "rebrand", "transition", "discontinuation", "discontinue",
     # Ticker & Symbol
     "ticker change", "ticker symbol", "symbol change",
-    "rename", "rebranding", "tick size",
+    "rename", "rebranding", "tick size", "renaming",
     # Network & Upgrade
     "network upgrade", "network support termination",
     "mainnet upgrade", "mainnet launch", "system upgrade",
