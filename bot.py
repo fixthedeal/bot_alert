@@ -83,8 +83,8 @@ KEYWORDS = [
     "removal", "remove trading pair", "trading pair removal", "end support", "temporarily paused",
     "cease trading", "suspend trading", "discontinue", "cease support", "temporarily closed", "monitoring tag", "st tag", "special treatment",
     # Migration & Contract
-    "migration", "migrate", "token migration", "contract swap",
-    "contract change", "contract address", "new contract", "token swap",
+    "migration", "migrate", "token migration", "contract swap", "merge", "merger",
+    "contract change", "contract address", "new contract", "token swap", "token merge",
     "token rebranding", "rebrand", "transition", "discontinuation", "discontinue",
     # Ticker & Symbol
     "ticker change", "ticker symbol", "symbol change",
