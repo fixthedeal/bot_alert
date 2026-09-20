@@ -80,7 +80,7 @@ def get_gate_build_id(force_refresh: bool = False):
 KEYWORDS = [
     # Delisting
     "delist", "delisting", "will delist", "to delist",
-    "removal", "remove trading pair", "trading pair removal", "end support", "temporarily paused",
+    "removal", "remove trading pair", "trading pair removal", "end support", "temporarily paused", "st warning",
     "cease trading", "suspend trading", "discontinue", "cease support", "temporarily closed", "monitoring tag", "st tag", "special treatment",
     # Migration & Contract
     "migration", "migrate", "token migration", "contract swap", "merge", "merger",
