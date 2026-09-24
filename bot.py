@@ -600,7 +600,7 @@ def fetch_scrape(source):
         log.error(f"❌ Error scrape {source['name']}: {e}")
 
 
-MEXC_MAX_AGE_MINUTES = 180  # abaikan artikel yang lebih dari 180 menit
+MEXC_MAX_AGE_MINUTES = 180
 
 MEXC_DATE_PATTERN = re.compile(
     r'^(?:\d+\s+(?:minute|hour|day)s?\s+ago'
@@ -643,9 +643,17 @@ def find_mexc_date_text(a_tag):
 def fetch_mexc_scrape(source):
     log.info("🕷️  Scrape: MEXC")
     try:
-        headers = {**HEADERS, "Cache-Control": "no-cache", "Pragma": "no-cache"}
-        r = requests.get(source["url"], headers=headers, timeout=15)
+        headers = {
+            **HEADERS,
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+        }
+
+        cache_buster = int(time.time() * 1000)
+        url = f"{source['url']}?_={cache_buster}"
+        r = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(r.text, "html.parser")
+
 
         links = [a for a in soup.find_all("a", href=True) if "/announcements/article/" in a["href"]]
         log.info(f"   → {len(links)} link artikel ditemukan")
@@ -671,7 +679,7 @@ def fetch_mexc_scrape(source):
             date_text = find_mexc_date_text(a)
             article_time = parse_mexc_time(date_text)
             if article_time is None:
-                log.warning(f"   ⚠️ gagal parse tanggal untuk: {title[:60]} — dilewati")
+                log.warning(f"   ⚠️ Gagal parse tanggal untuk: {title[:60]} — dilewati")
                 mark_seen(uid)
                 continue
 
@@ -683,7 +691,7 @@ def fetch_mexc_scrape(source):
 
             mark_seen(uid)
             matched += 1
-            send_telegram(format_message(source["logo"], source["name"], title, href))
+            send_telegram(format_message(source["logo"], source["name"], title, href), force=True)
             time.sleep(1)
 
         log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
