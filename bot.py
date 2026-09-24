@@ -6,7 +6,7 @@ import sqlite3
 import logging
 import requests
 import feedparser
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from apscheduler.schedulers.blocking import BlockingScheduler
 from bs4 import BeautifulSoup
 
@@ -257,7 +257,7 @@ SOURCES = [
     # ── MEXC ──
     {
         "name": "MEXC",
-        "type": "scrape",
+        "type": "mexc_scrape",
         "url": "https://www.mexc.com/announcements/all",
         "logo": "🔷",
     },
@@ -599,6 +599,97 @@ def fetch_scrape(source):
         log.error(f"❌ Error scrape {source['name']}: {e}")
 
 
+MEXC_MAX_AGE_MINUTES = 180  # abaikan artikel yang lebih dari 180 menit
+
+MEXC_DATE_PATTERN = re.compile(
+    r'^(?:\d+\s+(?:minute|hour|day)s?\s+ago'
+    r'|about\s+\d+\s+(?:minute|hour|day)s?\s+ago'
+    r'|[A-Za-z]{3}\s+\d{1,2},\s+\d{4})$',
+    re.IGNORECASE
+)
+
+def parse_mexc_time(text: str):
+    if not text:
+        return None
+    text = text.strip()
+    now = datetime.now(timezone.utc)
+    m = re.match(r'(?:about\s+)?(\d+)\s+minutes?\s+ago', text, re.IGNORECASE)
+    if m:
+        return now - timedelta(minutes=int(m.group(1)))
+    m = re.match(r'(?:about\s+)?(\d+)\s+hours?\s+ago', text, re.IGNORECASE)
+    if m:
+        return now - timedelta(hours=int(m.group(1)))
+    m = re.match(r'(?:about\s+)?(\d+)\s+days?\s+ago', text, re.IGNORECASE)
+    if m:
+        return now - timedelta(days=int(m.group(1)))
+    try:
+        dt = datetime.strptime(text, "%b %d, %Y")
+        return dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+def find_mexc_date_text(a_tag):
+    node = a_tag
+    for _ in range(8):
+        node = node.find_next(string=True)
+        if node is None:
+            break
+        text = node.strip()
+        if text and MEXC_DATE_PATTERN.match(text):
+            return text
+    return None
+
+def fetch_mexc_scrape(source):
+    log.info("🕷️  Scrape: MEXC")
+    try:
+        headers = {**HEADERS, "Cache-Control": "no-cache", "Pragma": "no-cache"}
+        r = requests.get(source["url"], headers=headers, timeout=15)
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        links = [a for a in soup.find_all("a", href=True) if "/announcements/article/" in a["href"]]
+        log.info(f"   → {len(links)} link artikel ditemukan")
+
+        seen_uids = set()
+        matched = 0
+        now = datetime.now(timezone.utc)
+
+        for a in links:
+            href = a["href"]
+            title = a.get_text(separator=" ", strip=True)
+            if len(title) < 10 or not is_relevant(title):
+                continue
+
+            if href.startswith("/"):
+                href = "https://www.mexc.com" + href
+
+            uid = normalize_uid(href)
+            if uid in seen_uids or is_seen(uid):
+                continue
+            seen_uids.add(uid)
+
+            date_text = find_mexc_date_text(a)
+            article_time = parse_mexc_time(date_text)
+            if article_time is None:
+                log.warning(f"   ⚠️ gagal parse tanggal untuk: {title[:60]} — dilewati")
+                mark_seen(uid)
+                continue
+
+            age_minutes = (now - article_time).total_seconds() / 60
+            if age_minutes > MEXC_MAX_AGE_MINUTES:
+                log.info(f"   ⏭️ Lewati (terlalu lama, {date_text}): {title[:60]}")
+                mark_seen(uid)
+                continue
+
+            mark_seen(uid)
+            matched += 1
+            send_telegram(format_message(source["logo"], source["name"], title, href))
+            time.sleep(1)
+
+        log.info(f"   → {matched} artikel baru cocok keyword & terkirim")
+    except Exception as e:
+        log.error(f"❌ Error scrape MEXC: {e}")
+
+
 def fetch_upbit_api(source):
     log.info("🔌 Cek API: Upbit")
     try:
@@ -716,6 +807,8 @@ def check_all():
             fetch_bitfinex_api(source)
         elif t == "scrape":
             fetch_scrape(source)
+        elif t == "mexc_scrape":
+            fetch_mexc_scrape(source)
         elif t == "upbit_api":
             fetch_upbit_api(source)
     log.info("✅ Selesai pengecekan.")
