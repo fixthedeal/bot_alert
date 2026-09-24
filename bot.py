@@ -1,6 +1,7 @@
 import re
 import json
 import os
+import sys
 import time
 import sqlite3
 import logging
@@ -26,11 +27,11 @@ DEEPL_API_URL = (
     else "https://api.deepl.com/v2/translate"
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", stream=sys.stdout)
 log = logging.getLogger(__name__)
 
 if not DEEPL_API_KEY:
-    log.warning("⚠️ DEEPL_API_KEY tidak diisi — translasi akan dilewati (pakai teks asli).")
+    log.warning("⚠️ DEEPL_API_KEY tidak diisi — translation akan dilewati (pakai teks asli).")
 
 _gate_build_id_cache = {"id": None}
 
