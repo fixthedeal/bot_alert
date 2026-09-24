@@ -345,8 +345,8 @@ def normalize_uid(href: str) -> str:
     return m.group(1) if m else href
 
 # ─── TELEGRAM SENDER ───────────────────────────────────────────────────────────
-def send_telegram(message):
-    if not is_baseline_done():
+def send_telegram(message, force=False):
+    if not force and not is_baseline_done():
         return
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
