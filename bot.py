@@ -101,7 +101,7 @@ KEYWORDS = [
     # Snapshot
     "snapshot", "airdrop snapshot",
     # Notice
-    "notice of removal", "important notice", "investment warning",
+    "notice of removal", "important notice", "investment warning", "stock split", "stock consolidation",
 ]
 
 # ─── UPBIT KEYWORDS (Korea + Inggris) ─────────────────────────────────────────
