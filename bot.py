@@ -88,8 +88,8 @@ KEYWORDS = [
     "contract change", "contract address", "new contract", "token swap", "token merge",
     "token rebranding", "rebrand", "transition", "discontinuation", "discontinue",
     # Ticker & Symbol
-    "ticker change", "ticker symbol", "symbol change",
-    "rename", "rebranding", "tick size", "renaming",
+    "ticker change", "ticker symbol", "symbol change", "lot size", "qty step", "size multiplier",
+    "rename", "rebranding", "tick size", "renaming", "step size", "minimum order quantity",
     # Network & Upgrade
     "network upgrade", "network support termination",
     "mainnet upgrade", "mainnet launch", "system upgrade",
