@@ -284,13 +284,21 @@ SOURCES = [
         "url": "https://www.htx.com/support/",
         "logo": "🟤",
     },
-        # ── Upbit ──
+    # ── Upbit ──
     {
         "name": "Upbit",
         "type": "upbit_api",
         "url": "https://pub-info.upbit.com/api/v1/announcements",
         "logo": "♦️",
         "base_link": "https://upbit.com/service_center/notice?id=",
+    },
+    # ── Kraken ──
+    {
+        "name": "Kraken",
+        "type": "rss",
+        "url": "https://status.kraken.com/history.rss",
+        "logo": "🟪",
+        "baseline_first": True,
     },
 ]
 
@@ -330,9 +338,21 @@ def is_baseline_done():
     con.close()
     return row is not None and row[0] == "1"
 
-def set_baseline_done():
+def set_source_baselined(name):
     con = sqlite3.connect(DB_PATH)
-    con.execute("INSERT OR REPLACE INTO meta VALUES ('baseline_done', '1')")
+    con.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", (f"baseline_{name}", "1"))
+    con.commit()
+    con.close()
+
+def is_source_baselined(name):
+    con = sqlite3.connect(DB_PATH)
+    row = con.execute("SELECT value FROM meta WHERE key=?", (f"baseline_{name}",)).fetchone()
+    con.close()
+    return row is not None
+
+def set_source_baselined(name):
+    con = sqlite3.connect(DB_PATH)
+    con.execute("INSERT OR REPLACE INTO meta VALUES (?, '1')", (f"baseline_{name}", "1"))
     con.commit()
     con.close()
 
@@ -418,6 +438,8 @@ def fetch_binance_api(source):
 def fetch_rss(source: dict):
     log.info(f"📶 Cek RSS: {source['name']}")
     try:
+        first_run = source.get("baseline_first") and not is_source_baselined(source["name"])
+
         r = requests.get(source["url"], headers=HEADERS, timeout=15)
         r.raise_for_status()
         feed = feedparser.parse(r.content)
@@ -433,8 +455,13 @@ def fetch_rss(source: dict):
             if is_seen(uid):
                 continue
             mark_seen(uid)
+            if first_run:
+                continue
             send_telegram(format_message(source["logo"], source["name"], title, link))
             time.sleep(1)
+        if first_run:
+            set_source_baselined(source["name"])
+            log.info(f"   → baseline {source['name']} direkam (tanpa kirim)")
     except Exception as e:
         log.error(f"❌ Error RSS {source['name']}: {e}")
 
